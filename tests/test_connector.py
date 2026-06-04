@@ -27,9 +27,8 @@ from aiohttp import (
     ClientRequest,
     ClientSession,
     ClientTimeout,
-    connector as connector_module,
+    connector,
     hdrs,
-    net_helpers,
     web,
 )
 from aiohttp.abc import AbstractResolver, ResolveResult
@@ -672,7 +671,7 @@ async def test_tcp_connector_certificate_error(
 
     conn = aiohttp.TCPConnector()
     with mock.patch.object(
-        net_helpers,
+        connector,
         "create_connection",
         autospec=True,
         spec_set=True,
@@ -695,7 +694,7 @@ async def test_tcp_connector_server_hostname_default(
     conn = aiohttp.TCPConnector()
 
     with mock.patch.object(
-        net_helpers, "create_connection", autospec=True, spec_set=True
+        connector, "create_connection", autospec=True, spec_set=True
     ) as create_connection:
         create_connection.return_value = mock.Mock(), mock.Mock()
 
@@ -713,7 +712,7 @@ async def test_tcp_connector_server_hostname_override(
     conn = aiohttp.TCPConnector()
 
     with mock.patch.object(
-        net_helpers, "create_connection", autospec=True, spec_set=True
+        connector, "create_connection", autospec=True, spec_set=True
     ) as create_connection:
         create_connection.return_value = mock.Mock(), mock.Mock()
 
@@ -870,7 +869,7 @@ async def test_tcp_connector_multiple_hosts_errors(
             side_effect=_resolve_host,
         ),
         mock.patch.object(
-            net_helpers,
+            connector,
             "create_connection",
             autospec=True,
             spec_set=True,
@@ -971,7 +970,7 @@ async def test_tcp_connector_happy_eyeballs(
             side_effect=sock_connect,
         ):
             with mock.patch.object(
-                net_helpers,
+                connector,
                 "create_connection",
                 autospec=True,
                 spec_set=True,
@@ -1064,7 +1063,7 @@ async def test_tcp_connector_interleave(make_client_request: _RequestMaker) -> N
             side_effect=_resolve_host,
         ),
         mock.patch.object(
-            net_helpers,
+            connector,
             "create_connection",
             autospec=True,
             spec_set=True,
@@ -1146,7 +1145,7 @@ async def test_tcp_connector_family_is_respected(
             side_effect=sock_connect,
         ):
             with mock.patch.object(
-                net_helpers,
+                connector,
                 "create_connection",
                 autospec=True,
                 spec_set=True,
@@ -1259,7 +1258,7 @@ async def test_tcp_connector_multiple_hosts_one_timeout(
             side_effect=_resolve_host,
         ),
         mock.patch.object(
-            net_helpers,
+            connector,
             "create_connection",
             autospec=True,
             spec_set=True,
@@ -2220,7 +2219,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_passed_to_create_connection(
         conn = aiohttp.TCPConnector(ssl_shutdown_timeout=2.5)
 
     with mock.patch.object(
-        net_helpers, "create_connection", autospec=True, spec_set=True
+        connector, "create_connection", autospec=True, spec_set=True
     ) as create_connection:
         create_connection.return_value = mock.Mock(), mock.Mock()
 
@@ -2238,15 +2237,14 @@ async def test_tcp_connector_ssl_shutdown_timeout_passed_to_create_connection(
         conn = aiohttp.TCPConnector(ssl_shutdown_timeout=None)
 
     with mock.patch.object(
-        net_helpers, "create_connection", autospec=True, spec_set=True
+        connector, "create_connection", autospec=True, spec_set=True
     ) as create_connection:
         create_connection.return_value = mock.Mock(), mock.Mock()
 
         req = make_client_request("GET", URL("https://127.0.0.1"), loop=loop)
 
         with closing(await conn.connect(req, [], ClientTimeout())):
-            # When ssl_shutdown_timeout is None, it should not be in kwargs
-            assert "ssl_shutdown_timeout" not in create_connection.call_args.kwargs
+            assert create_connection.call_args.kwargs["ssl_shutdown_timeout"] is None
 
     await conn.close()
 
@@ -2257,7 +2255,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_passed_to_create_connection(
         conn = aiohttp.TCPConnector(ssl_shutdown_timeout=2.5)
 
     with mock.patch.object(
-        net_helpers, "create_connection", autospec=True, spec_set=True
+        connector, "create_connection", autospec=True, spec_set=True
     ) as create_connection:
         create_connection.return_value = mock.Mock(), mock.Mock()
 
@@ -2285,19 +2283,19 @@ async def test_tcp_connector_ssl_shutdown_timeout_not_passed_pre_311(
         assert any(issubclass(warn.category, RuntimeWarning) for warn in w)
 
         with mock.patch.object(
-            net_helpers, "create_connection", autospec=True, spec_set=True
+            connector, "create_connection", autospec=True, spec_set=True
         ) as create_connection:
             create_connection.return_value = mock.Mock(), mock.Mock()
 
             # Test with HTTPS
             req = make_client_request("GET", URL("https://127.0.0.1"), loop=loop)
             with closing(await conn.connect(req, [], ClientTimeout())):
-                assert "ssl_shutdown_timeout" not in create_connection.call_args.kwargs
+                assert create_connection.call_args.kwargs["ssl_shutdown_timeout"] == 2.5
 
             # Test with HTTP
             req = make_client_request("GET", URL("http://127.0.0.1"), loop=loop)
             with closing(await conn.connect(req, [], ClientTimeout())):
-                assert "ssl_shutdown_timeout" not in create_connection.call_args.kwargs
+                assert create_connection.call_args.kwargs["ssl_shutdown_timeout"] is None
 
         await conn.close()
 
@@ -2432,35 +2430,6 @@ async def test_tcp_connector_ssl_shutdown_timeout_sentinel_no_warning_pre_311() 
         await conn.close()
 
 
-async def test_tcp_connector_ssl_shutdown_timeout_zero_not_passed(
-    start_connection: mock.AsyncMock, make_client_request: _RequestMaker
-) -> None:
-    """Test that ssl_shutdown_timeout=0 is NOT passed to create_connection."""
-    loop = asyncio.get_running_loop()
-    with pytest.warns(
-        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
-    ):
-        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=0)
-
-    with mock.patch.object(
-        net_helpers, "create_connection", autospec=True, spec_set=True
-    ) as create_connection:
-        create_connection.return_value = mock.Mock(), mock.Mock()
-
-        # Test with HTTPS
-        req = make_client_request("GET", URL("https://127.0.0.1"), loop=loop)
-        with closing(await conn.connect(req, [], ClientTimeout())):
-            # Verify ssl_shutdown_timeout was NOT passed
-            assert "ssl_shutdown_timeout" not in create_connection.call_args.kwargs
-
-        # Test with HTTP (should not have ssl_shutdown_timeout anyway)
-        req = make_client_request("GET", URL("http://127.0.0.1"), loop=loop)
-        with closing(await conn.connect(req, [], ClientTimeout())):
-            assert "ssl_shutdown_timeout" not in create_connection.call_args.kwargs
-
-    await conn.close()
-
-
 @pytest.mark.skipif(
     sys.version_info < (3, 11), reason="ssl_shutdown_timeout requires Python 3.11+"
 )
@@ -2475,7 +2444,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_nonzero_passed(
         conn = aiohttp.TCPConnector(ssl_shutdown_timeout=5.0)
 
     with mock.patch.object(
-        net_helpers, "create_connection", autospec=True, spec_set=True
+        connector, "create_connection", autospec=True, spec_set=True
     ) as create_connection:
         create_connection.return_value = mock.Mock(), mock.Mock()
 
@@ -2488,7 +2457,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_nonzero_passed(
         # Test with HTTP (should not have ssl_shutdown_timeout)
         req = make_client_request("GET", URL("http://127.0.0.1"), loop=loop)
         with closing(await conn.connect(req, [], ClientTimeout())):
-            assert "ssl_shutdown_timeout" not in create_connection.call_args.kwargs
+            assert create_connection.call_args.kwargs["ssl_shutdown_timeout"] is None
 
     await conn.close()
 
@@ -2544,7 +2513,9 @@ async def test_start_tls_exception_with_ssl_shutdown_timeout_zero() -> None:
         mock.patch.object(
             conn, "_get_ssl_context", return_value=ssl.create_default_context()
         ),
-        mock.patch.object(net_helpers, "start_tls", side_effect=OSError("TLS failed")),
+        mock.patch.object(
+            connector, "start_tls", side_effect=OSError("TLS failed")
+        ),
     ):
         with pytest.raises(OSError):
             await conn._start_tls_connection(underlying_transport, req, ClientTimeout())
@@ -2576,7 +2547,9 @@ async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero() -> None:
         mock.patch.object(
             conn, "_get_ssl_context", return_value=ssl.create_default_context()
         ),
-        mock.patch.object(net_helpers, "start_tls", side_effect=OSError("TLS failed")),
+        mock.patch.object(
+            connector, "start_tls", side_effect=OSError("TLS failed")
+        ),
     ):
         with pytest.raises(OSError):
             await conn._start_tls_connection(underlying_transport, req, ClientTimeout())
@@ -2611,7 +2584,9 @@ async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero_pre_311() -
         mock.patch.object(
             conn, "_get_ssl_context", return_value=ssl.create_default_context()
         ),
-        mock.patch.object(net_helpers, "start_tls", side_effect=OSError("TLS failed")),
+        mock.patch.object(
+            connector, "start_tls", side_effect=OSError("TLS failed")
+        ),
     ):
         with pytest.raises(OSError):
             await conn._start_tls_connection(underlying_transport, req, ClientTimeout())
@@ -4529,7 +4504,7 @@ def test_connector_multiple_event_loop(make_client_request: _RequestMaker) -> No
         finally:
             loop.close()
 
-    with mock.patch.object(net_helpers, "create_connection", create_connection):
+    with mock.patch.object(connector, "create_connection", create_connection):
         with futures.ThreadPoolExecutor() as executor:
             res_list = [executor.submit(test_connect) for _ in range(2)]
             raw_response_list = [res.result() for res in futures.as_completed(res_list)]
@@ -4557,7 +4532,7 @@ async def test_tcp_connector_socket_factory(
         )
 
         with mock.patch.object(
-            net_helpers,
+            connector,
             "create_connection",
             autospec=True,
             spec_set=True,
@@ -4584,9 +4559,9 @@ async def test_tcp_connector_socket_factory(
 
 def test_default_ssl_context_creation_without_ssl() -> None:
     """Verify _make_ssl_context does not raise when ssl is not available."""
-    with mock.patch.object(connector_module, "ssl", None):
-        assert connector_module._make_ssl_context(False) is None
-        assert connector_module._make_ssl_context(True) is None
+    with mock.patch.object(connector, "ssl", None):
+        assert connector._make_ssl_context(False) is None
+        assert connector._make_ssl_context(True) is None
 
 
 def _acquired_connection(

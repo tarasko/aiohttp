@@ -22,11 +22,11 @@ from aiohttp import (
     ClientConnectorError,
     ClientSession,
     ClientTimeout,
-    WSCloseCode,
     ServerDisconnectedError,
-    net_helpers,
+    WSCloseCode,
     web,
 )
+from aiohttp import web_runner as web_runner_module
 from aiohttp.log import access_logger
 from aiohttp.web_protocol import RequestHandler
 from aiohttp.web_runner import BaseRunner
@@ -77,7 +77,7 @@ def create_server_mock() -> Iterator[mock.AsyncMock]:
     server.sockets = []
     create_server_mock = mock.AsyncMock(return_value=server)
 
-    with mock.patch.object(net_helpers, "create_server", create_server_mock):
+    with mock.patch.object(web_runner_module, "create_server", create_server_mock):
         yield create_server_mock
 
 

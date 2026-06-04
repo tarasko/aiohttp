@@ -11,7 +11,7 @@ from stat import S_ISREG
 from types import MappingProxyType
 from typing import IO, TYPE_CHECKING, Any, Final, Optional
 
-from . import hdrs, net_helpers
+from . import hdrs
 from .abc import AbstractStreamWriter
 from .helpers import DEFAULT_CHUNK_SIZE, ETAG_ANY, ETag, must_be_empty_body
 from .typedefs import LooseHeaders, PathLike
@@ -32,6 +32,28 @@ if TYPE_CHECKING:
 
 
 _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
+
+
+aiofastnet: Any | None
+try:
+    import aiofastnet
+except ImportError:
+    aiofastnet = None
+
+
+async def sendfile(
+    loop: asyncio.AbstractEventLoop,
+    transport: asyncio.Transport,
+    fobj: IO[Any],
+    offset: int,
+    count: int,
+) -> int:
+    if aiofastnet is not None:
+        return await aiofastnet.sendfile(  # type: ignore[no-any-return]
+            loop, transport, fobj, offset, count
+        )
+    else:
+        return await loop.sendfile(transport, fobj, offset, count)
 
 
 NOSENDFILE: Final[bool] = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
@@ -132,7 +154,7 @@ class FileResponse(StreamResponse):
             raise ConnectionResetError("Connection lost")
 
         try:
-            await net_helpers.sendfile(loop, transport, fobj, offset, count)
+            await sendfile(loop, transport, fobj, offset, count)
         except NotImplementedError:
             return await self._sendfile_fallback(writer, fobj, offset, count)
 

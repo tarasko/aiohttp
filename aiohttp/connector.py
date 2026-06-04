@@ -18,7 +18,7 @@ import aiohappyeyeballs
 from aiohappyeyeballs import AddrInfoType, SocketFactoryType
 from multidict import CIMultiDict
 
-from . import hdrs, helpers, net_helpers
+from . import hdrs, helpers
 from .abc import AbstractResolver, ResolveResult
 from .client_exceptions import (
     ClientConnectionError,
@@ -94,6 +94,72 @@ if TYPE_CHECKING:
     from .client import ClientTimeout
     from .client_reqrep import ConnectionKey
     from .tracing import Trace
+
+
+aiofastnet: Any | None
+try:
+    import aiofastnet
+except ImportError:
+    aiofastnet = None
+
+
+async def create_connection(
+    loop: asyncio.AbstractEventLoop,
+    protocol_factory: Callable[[], ResponseHandler],
+    *,
+    ssl: SSLContext | None = None,
+    sock: socket.socket | None = None,
+    server_hostname: str | None = None,
+    **kwargs
+) -> tuple[asyncio.Transport, ResponseHandler]:
+    if aiofastnet is not None:
+        return await aiofastnet.create_connection(  # type: ignore[no-any-return]
+            loop,
+            protocol_factory,
+            ssl=ssl,
+            sock=sock,
+            server_hostname=server_hostname,
+            **kwargs
+        )
+    else:
+        return await loop.create_connection(  # type: ignore[return-value]
+            protocol_factory,
+            ssl=ssl,
+            sock=sock,
+            server_hostname=server_hostname,
+            **kwargs
+        )
+
+
+async def start_tls(
+    loop: asyncio.AbstractEventLoop,
+    transport: asyncio.BaseTransport,
+    protocol: ResponseHandler,
+    sslcontext: SSLContext,
+    *,
+    server_hostname: str | None = None,
+    ssl_handshake_timeout: float | None = None,
+    **kwargs
+) -> asyncio.BaseTransport | None:
+    if aiofastnet is not None:
+        return await aiofastnet.start_tls(  # type: ignore[no-any-return]
+            loop,
+            transport,
+            protocol,
+            sslcontext,
+            server_hostname=server_hostname,
+            ssl_handshake_timeout=ssl_handshake_timeout,
+            **kwargs
+        )
+    else:
+        return await loop.start_tls(
+            transport,
+            protocol,
+            sslcontext,
+            server_hostname=server_hostname,
+            ssl_handshake_timeout=ssl_handshake_timeout,
+            **kwargs
+        )
 
 
 class Connection:
@@ -1233,12 +1299,14 @@ class TCPConnector(BaseConnector):
 
     async def _wrap_create_connection(
         self,
-        *args: Any,
+        protocol_factory: Callable[[], ResponseHandler],
+        *,
+        ssl: SSLContext | None,
+        server_hostname: str | None,
         addr_infos: list[AddrInfoType],
         req: ClientRequestBase,
         timeout: "ClientTimeout",
         client_error: type[Exception] = ClientConnectorError,
-        **kwargs: Any,
     ) -> tuple[asyncio.Transport, ResponseHandler]:
         try:
             async with ceil_timeout(
@@ -1252,14 +1320,19 @@ class TCPConnector(BaseConnector):
                     loop=self._loop,
                     socket_factory=self._socket_factory,
                 )
-                # Add ssl_shutdown_timeout for Python 3.11+ when SSL is used
-                if (
-                    kwargs.get("ssl")
-                    and self._ssl_shutdown_timeout
-                    and sys.version_info >= (3, 11)
-                ):
-                    kwargs["ssl_shutdown_timeout"] = self._ssl_shutdown_timeout
-                return await net_helpers.create_connection(self._loop, *args, **kwargs, sock=sock)  # type: ignore[no-any-return]
+
+                kwargs = {}
+                if ssl and sys.version_info >= (3, 11):
+                    kwargs['ssl_shutdown_timeout'] = self._ssl_shutdown_timeout
+
+                return await create_connection(
+                    self._loop,
+                    protocol_factory,
+                    ssl=ssl,
+                    sock=sock,
+                    server_hostname=server_hostname,
+                    **kwargs
+                )
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
         except ssl_errors as exc:
@@ -1290,7 +1363,7 @@ class TCPConnector(BaseConnector):
 
         # Check if aiofastnet is being used, which supports TLS in TLS,
         # otherwise assume that asyncio's native transport is being used.
-        if net_helpers.HAS_AIOFASTNET:
+        if aiofastnet is not None:
             return
 
         # Support in asyncio was added in Python 3.11 (bpo-44011)
@@ -1341,27 +1414,20 @@ class TCPConnector(BaseConnector):
             async with ceil_timeout(
                 timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
             ):
+                kwargs = {}
+                if sslcontext and self._ssl_shutdown_timeout and sys.version_info >= (3, 11):
+                    kwargs['ssl_shutdown_timeout'] = self._ssl_shutdown_timeout
+
                 try:
-                    # ssl_shutdown_timeout is only available in Python 3.11+
-                    if sys.version_info >= (3, 11) and self._ssl_shutdown_timeout:
-                        tls_transport = await net_helpers.start_tls(
-                            self._loop,
-                            underlying_transport,
-                            tls_proto,
-                            sslcontext,
-                            server_hostname=req.server_hostname or req.url.raw_host,
-                            ssl_handshake_timeout=timeout.total,
-                            ssl_shutdown_timeout=self._ssl_shutdown_timeout,
-                        )
-                    else:
-                        tls_transport = await net_helpers.start_tls(
-                            self._loop,
-                            underlying_transport,
-                            tls_proto,
-                            sslcontext,
-                            server_hostname=req.server_hostname or req.url.raw_host,
-                            ssl_handshake_timeout=timeout.total,
-                        )
+                    tls_transport = await start_tls(
+                        self._loop,
+                        underlying_transport,
+                        tls_proto,
+                        sslcontext,
+                        server_hostname=req.server_hostname or req.url.raw_host,
+                        ssl_handshake_timeout=timeout.total,
+                        **kwargs
+                    )
                 except BaseException:
                     # We need to close the underlying transport since
                     # `start_tls()` probably failed before it had a
