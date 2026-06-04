@@ -1,4 +1,5 @@
 import asyncio
+import importlib
 import signal
 import socket
 from abc import ABC, abstractmethod
@@ -6,8 +7,9 @@ from typing import Any, Generic, TypeVar
 
 from yarl import URL
 
+aiofastnet: Any
 try:
-    import aiofastnet
+    aiofastnet = importlib.import_module("aiofastnet")
 except ImportError:
     aiofastnet = None
 

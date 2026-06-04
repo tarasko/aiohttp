@@ -1,5 +1,6 @@
 import asyncio
 import functools
+import importlib
 import random
 import socket
 import sys
@@ -18,8 +19,9 @@ import aiohappyeyeballs
 from aiohappyeyeballs import AddrInfoType, SocketFactoryType
 from multidict import CIMultiDict
 
+aiofastnet: Any
 try:
-    import aiofastnet
+    aiofastnet = importlib.import_module("aiofastnet")
 except ImportError:
     aiofastnet = None
 

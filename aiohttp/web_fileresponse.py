@@ -1,4 +1,5 @@
 import asyncio
+import importlib
 import io
 import os
 import pathlib
@@ -11,8 +12,9 @@ from stat import S_ISREG
 from types import MappingProxyType
 from typing import IO, TYPE_CHECKING, Any, Final, Optional
 
+aiofastnet: Any
 try:
-    import aiofastnet
+    aiofastnet = importlib.import_module("aiofastnet")
 except ImportError:
     aiofastnet = None
 
