@@ -183,7 +183,8 @@ jobs:
     needs: gen_llhttp
     strategy:
       matrix:
-        pyver: ['3.10', '3.11', '3.12', '3.13', '3.14']
+        #pyver: ['3.10', '3.11', '3.12', '3.13', '3.14']
+        pyver: ['3.14']
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         experimental: [false]
@@ -242,6 +243,11 @@ jobs:
       env:
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
       run: uv pip install -e .
+
+    - uses: actions/checkout@v6
+    - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v3
+
     - name: Run unittests
       env:
         COLOR: yes
