@@ -34,7 +34,6 @@ if TYPE_CHECKING:
 _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
 
 
-aiofastnet: Any | None
 try:
     import aiofastnet
 except ImportError:

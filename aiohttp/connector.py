@@ -96,7 +96,6 @@ if TYPE_CHECKING:
     from .tracing import Trace
 
 
-aiofastnet: Any | None
 try:
     import aiofastnet
 except ImportError:

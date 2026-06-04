@@ -22,7 +22,6 @@ except ImportError:  # pragma: no cover
     SSLContext = object  # type: ignore[misc,assignment]
 
 
-aiofastnet: Any | None
 try:
     import aiofastnet
 except ImportError:
