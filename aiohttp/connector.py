@@ -1369,7 +1369,8 @@ class TCPConnector(BaseConnector):
                 try:
                     # ssl_shutdown_timeout is only available in Python 3.11+
                     if sys.version_info >= (3, 11) and self._ssl_shutdown_timeout:
-                        tls_transport = await self._loop.start_tls(
+                        tls_transport = await start_tls(
+                            self._loop,
                             underlying_transport,
                             tls_proto,
                             sslcontext,
@@ -1378,7 +1379,8 @@ class TCPConnector(BaseConnector):
                             ssl_shutdown_timeout=self._ssl_shutdown_timeout,
                         )
                     else:
-                        tls_transport = await self._loop.start_tls(
+                        tls_transport = await start_tls(
+                            self._loop,
                             underlying_transport,
                             tls_proto,
                             sslcontext,
