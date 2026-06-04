@@ -1314,6 +1314,7 @@ class TCPConnector(BaseConnector):
             return
 
         # Check if uvloop is being used, which supports TLS in TLS,
+        # otherwise assume that asyncio's native transport is being used.
         if type(underlying_transport).__module__.startswith("uvloop"):
             return
 
@@ -1428,7 +1429,7 @@ class TCPConnector(BaseConnector):
             ) from type_err
         else:
             if tls_transport is None:
-                msg = "Failed to start TLS (possibly caused by closing transport)"  # type: ignore[unreachable]
+                msg = "Failed to start TLS (possibly caused by closing transport)"
                 raise client_error(req.connection_key, OSError(msg))
             tls_proto.connection_made(
                 tls_transport
