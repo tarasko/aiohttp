@@ -1366,10 +1366,6 @@ class TCPConnector(BaseConnector):
             async with ceil_timeout(
                 timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
             ):
-                kwargs = {}
-                if sslcontext and self._ssl_shutdown_timeout and sys.version_info >= (3, 11):
-                    kwargs['ssl_shutdown_timeout'] = self._ssl_shutdown_timeout
-
                 try:
                     # ssl_shutdown_timeout is only available in Python 3.11+
                     if sys.version_info >= (3, 11) and self._ssl_shutdown_timeout:
