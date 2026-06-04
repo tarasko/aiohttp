@@ -32,7 +32,7 @@ cffi==2.0.0 ; sys_platform != "android" and sys_platform != "ios"
     # via
     #   -r requirements/test-mobile.in
     #   pycares
-click==8.4.0
+click==8.4.1
     # via wait-for-it
 coverage==7.14.1
     # via pytest-cov
@@ -47,7 +47,7 @@ frozenlist==1.8.0
     #   aiosignal
 gunicorn==26.0.0
     # via -r requirements/base-ft.in
-idna==3.15
+idna==3.18
     # via yarl
 iniconfig==2.3.0
     # via pytest
@@ -91,7 +91,7 @@ pytest==9.0.3
     #   pytest-timeout
 pytest-aiohttp==1.1.0
     # via -r requirements/test-common-base.in
-pytest-asyncio==1.4.0a2
+pytest-asyncio==1.4.0
     # via pytest-aiohttp
 pytest-cov==7.1.0
     # via -r requirements/test-common-base.in
@@ -112,6 +112,7 @@ tomli==2.4.1
 typing-extensions==4.15.0 ; python_version < "3.13"
     # via
     #   -r requirements/runtime-deps.in
+    #   aiohttp
     #   aiosignal
     #   exceptiongroup
     #   multidict

@@ -2224,7 +2224,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_passed_to_create_connection(
     ) as create_connection:
         create_connection.return_value = mock.Mock(), mock.Mock()
 
-        req = make_client_request("GET", URL("https://example.com"), loop=loop)
+        req = make_client_request("GET", URL("https://127.0.0.1"), loop=loop)
 
         with closing(await conn.connect(req, [], ClientTimeout())):
             assert create_connection.call_args.kwargs["ssl_shutdown_timeout"] == 2.5
@@ -2242,7 +2242,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_passed_to_create_connection(
     ) as create_connection:
         create_connection.return_value = mock.Mock(), mock.Mock()
 
-        req = make_client_request("GET", URL("https://example.com"), loop=loop)
+        req = make_client_request("GET", URL("https://127.0.0.1"), loop=loop)
 
         with closing(await conn.connect(req, [], ClientTimeout())):
             # When ssl_shutdown_timeout is None, it should not be in kwargs
@@ -2261,7 +2261,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_passed_to_create_connection(
     ) as create_connection:
         create_connection.return_value = mock.Mock(), mock.Mock()
 
-        req = make_client_request("GET", URL("http://example.com"), loop=loop)
+        req = make_client_request("GET", URL("http://127.0.0.1"), loop=loop)
 
         with closing(await conn.connect(req, [], ClientTimeout())):
             # For non-SSL connections, ssl_shutdown_timeout should not be passed
@@ -2290,12 +2290,12 @@ async def test_tcp_connector_ssl_shutdown_timeout_not_passed_pre_311(
             create_connection.return_value = mock.Mock(), mock.Mock()
 
             # Test with HTTPS
-            req = make_client_request("GET", URL("https://example.com"), loop=loop)
+            req = make_client_request("GET", URL("https://127.0.0.1"), loop=loop)
             with closing(await conn.connect(req, [], ClientTimeout())):
                 assert "ssl_shutdown_timeout" not in create_connection.call_args.kwargs
 
             # Test with HTTP
-            req = make_client_request("GET", URL("http://example.com"), loop=loop)
+            req = make_client_request("GET", URL("http://127.0.0.1"), loop=loop)
             with closing(await conn.connect(req, [], ClientTimeout())):
                 assert "ssl_shutdown_timeout" not in create_connection.call_args.kwargs
 
@@ -2448,13 +2448,13 @@ async def test_tcp_connector_ssl_shutdown_timeout_zero_not_passed(
         create_connection.return_value = mock.Mock(), mock.Mock()
 
         # Test with HTTPS
-        req = make_client_request("GET", URL("https://example.com"), loop=loop)
+        req = make_client_request("GET", URL("https://127.0.0.1"), loop=loop)
         with closing(await conn.connect(req, [], ClientTimeout())):
             # Verify ssl_shutdown_timeout was NOT passed
             assert "ssl_shutdown_timeout" not in create_connection.call_args.kwargs
 
         # Test with HTTP (should not have ssl_shutdown_timeout anyway)
-        req = make_client_request("GET", URL("http://example.com"), loop=loop)
+        req = make_client_request("GET", URL("http://127.0.0.1"), loop=loop)
         with closing(await conn.connect(req, [], ClientTimeout())):
             assert "ssl_shutdown_timeout" not in create_connection.call_args.kwargs
 
@@ -2480,13 +2480,13 @@ async def test_tcp_connector_ssl_shutdown_timeout_nonzero_passed(
         create_connection.return_value = mock.Mock(), mock.Mock()
 
         # Test with HTTPS
-        req = make_client_request("GET", URL("https://example.com"), loop=loop)
+        req = make_client_request("GET", URL("https://127.0.0.1"), loop=loop)
         with closing(await conn.connect(req, [], ClientTimeout())):
             # Verify ssl_shutdown_timeout WAS passed
             assert create_connection.call_args.kwargs["ssl_shutdown_timeout"] == 5.0
 
         # Test with HTTP (should not have ssl_shutdown_timeout)
-        req = make_client_request("GET", URL("http://example.com"), loop=loop)
+        req = make_client_request("GET", URL("http://127.0.0.1"), loop=loop)
         with closing(await conn.connect(req, [], ClientTimeout())):
             assert "ssl_shutdown_timeout" not in create_connection.call_args.kwargs
 
@@ -4696,3 +4696,49 @@ async def test_connect_tunnel_connection_release() -> None:
 
     # Clean up to avoid resource warning
     conn.close()
+
+
+async def test_tcp_connector_close_race_condition() -> None:
+    """Test closing TCPConnector while DNS resolution is in-flight."""
+    loop = asyncio.get_running_loop()
+    resolve_started = loop.create_future()
+    close_started = loop.create_future()
+
+    class FakeResolver(AbstractResolver):
+        async def resolve(
+            self, host: str, port: int = 0, family: int = socket.AF_INET
+        ) -> list[ResolveResult]:
+            resolve_started.set_result(None)
+            await close_started
+            return [
+                {
+                    "hostname": host,
+                    "host": host,
+                    "port": port,
+                    "family": family,
+                    "proto": 0,
+                    "flags": socket.AI_NUMERICHOST,
+                }
+            ]
+
+        async def close(self) -> None:
+            assert False
+
+    connector = TCPConnector(use_dns_cache=False, resolver=FakeResolver())
+
+    async def resolve_host() -> None:
+        # The in-flight resolve should complete normally since close()
+        # happens after the resolver returns
+        result = await connector._resolve_host("localhost", 80)
+        assert len(result) == 1
+
+    async def close_connector() -> None:
+        await resolve_started
+        close_started.set_result(None)
+        await connector.close()
+
+    await asyncio.gather(resolve_host(), close_connector())
+
+    # After close, new resolves should raise ClientConnectionError
+    with pytest.raises(aiohttp.ClientConnectionError, match="Connector is closed"):
+        await connector._resolve_host("localhost", 80)

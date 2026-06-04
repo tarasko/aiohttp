@@ -42,7 +42,7 @@ frozenlist==1.8.0
     # via
     #   aiohttp
     #   aiosignal
-idna==3.16
+idna==3.18
     # via
     #   trustme
     #   yarl
@@ -133,6 +133,7 @@ trustme==1.2.1 ; platform_machine != "i686"
     # via -r requirements/test-common.in
 typing-extensions==4.15.0
     # via
+    #   aiohttp
     #   aiosignal
     #   cryptography
     #   exceptiongroup

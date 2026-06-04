@@ -61,13 +61,13 @@ frozenlist==1.8.0
     #   aiosignal
 gunicorn==26.0.0
     # via -r requirements/base.in
-idna==3.16
+idna==3.18
     # via
     #   trustme
     #   yarl
 iniconfig==2.3.0
     # via pytest
-isal==1.7.2 ; python_version < "3.14" and implementation_name == "cpython"
+isal==1.8.0 ; python_version < "3.14" and implementation_name == "cpython"
     # via -r requirements/test-common.in
 librt==0.11.0
     # via mypy
@@ -159,6 +159,7 @@ trustme==1.2.1 ; platform_machine != "i686"
 typing-extensions==4.15.0 ; python_version < "3.13"
     # via
     #   -r requirements/runtime-deps.in
+    #   aiohttp
     #   aiosignal
     #   cryptography
     #   exceptiongroup
