@@ -91,12 +91,12 @@ def patched_loop(
     unix_server = mock.create_autospec(asyncio.Server, spec_set=True, instance=True)
     unix_server.wait_closed.return_value = None
     unix_server.sockets = []
-
     with mock.patch.object(
         event_loop, "create_server", autospec=True, spec_set=True, return_value=server
     ):
         with mock.patch.object(
-            event_loop, "create_unix_server",
+            event_loop,
+            "create_unix_server",
             autospec=True,
             spec_set=True,
             return_value=unix_server,
@@ -115,9 +115,7 @@ def stopper(event_loop: asyncio.AbstractEventLoop) -> Callable[[], None]:
     return f
 
 
-def test_run_app_http(
-    event_loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
-) -> None:
+def test_run_app_http(event_loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock) -> None:
     app = web.Application()
     startup_handler = mock.AsyncMock()
     app.on_startup.append(startup_handler)
@@ -127,14 +125,7 @@ def test_run_app_http(
     web.run_app(app, print=stopper(event_loop), loop=event_loop)
 
     create_server_mock.assert_called_with(
-        event_loop,
-        mock.ANY,
-        None,
-        8080,
-        ssl=None,
-        backlog=128,
-        reuse_address=None,
-        reuse_port=None,
+        event_loop, mock.ANY, None, 8080, ssl=None, backlog=128, reuse_address=None, reuse_port=None,
     )
     startup_handler.assert_called_once_with(app)
     cleanup_handler.assert_called_once_with(app)
@@ -147,14 +138,7 @@ def test_run_app_close_loop(
     web.run_app(app, print=stopper(event_loop), loop=event_loop)
 
     create_server_mock.assert_called_with(
-        event_loop,
-        mock.ANY,
-        None,
-        8080,
-        ssl=None,
-        backlog=128,
-        reuse_address=None,
-        reuse_port=None,
+        event_loop, mock.ANY, None, 8080, ssl=None, backlog=128, reuse_address=None, reuse_port=None,
     )
     assert event_loop.is_closed()
 
@@ -224,14 +208,7 @@ mock_server_multi = [
 ]
 mock_server_default_8989 = [
     mock.call(
-        mock.ANY,
-        mock.ANY,
-        None,
-        8989,
-        ssl=None,
-        backlog=128,
-        reuse_address=None,
-        reuse_port=None,
+        mock.ANY, mock.ANY, None, 8989, ssl=None, backlog=128, reuse_address=None, reuse_port=None
     )
 ]
 mock_socket = mock.Mock(getsockname=lambda: ("mock-socket", 123))
@@ -528,9 +505,7 @@ def test_run_app_mixed_bindings(  # type: ignore[misc]
     assert create_server_mock.mock_calls == expected_server_calls
 
 
-def test_run_app_https(
-    event_loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
-) -> None:
+def test_run_app_https(event_loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock) -> None:
     app = web.Application()
 
     ssl_context = ssl.create_default_context()
@@ -539,14 +514,7 @@ def test_run_app_https(
     )
 
     create_server_mock.assert_called_with(
-        event_loop,
-        mock.ANY,
-        None,
-        8443,
-        ssl=ssl_context,
-        backlog=128,
-        reuse_address=None,
-        reuse_port=None,
+        event_loop, mock.ANY, None, 8443, ssl=ssl_context, backlog=128, reuse_address=None, reuse_port=None,
     )
 
 
@@ -623,14 +591,7 @@ def test_run_app_custom_backlog(
     web.run_app(app, backlog=10, print=stopper(event_loop), loop=event_loop)
 
     create_server_mock.assert_called_with(
-        event_loop,
-        mock.ANY,
-        None,
-        8080,
-        ssl=None,
-        backlog=10,
-        reuse_address=None,
-        reuse_port=None,
+        event_loop, mock.ANY, None, 8080, ssl=None, backlog=10, reuse_address=None, reuse_port=None,
     )
 
 
@@ -870,14 +831,7 @@ def test_run_app_coro(
     web.run_app(make_app(), print=stopper(event_loop), loop=event_loop)
 
     create_server_mock.assert_called_with(
-        event_loop,
-        mock.ANY,
-        None,
-        8080,
-        ssl=None,
-        backlog=128,
-        reuse_address=None,
-        reuse_port=None,
+        event_loop, mock.ANY, None, 8080, ssl=None, backlog=128, reuse_address=None, reuse_port=None,
     )
     assert startup_handler is not None
     assert cleanup_handler is not None
