@@ -45,7 +45,7 @@ async def sendfile(
     loop: asyncio.AbstractEventLoop, *args: Any, **kwargs: Any
 ) -> int:
     if aiofastnet is not None:
-        return await aiofastnet.sendfile(loop, *args, **kwargs)
+        return await aiofastnet.sendfile(loop, *args, **kwargs) # type: ignore[no-any-return]
     else:
         return await loop.sendfile(*args, **kwargs)
 
