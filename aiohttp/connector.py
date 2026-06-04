@@ -96,6 +96,31 @@ if TYPE_CHECKING:
     from .tracing import Trace
 
 
+aiofastnet: Any | None
+try:
+    import aiofastnet
+except ImportError:
+    aiofastnet = None
+
+
+async def create_connection(
+    loop: asyncio.AbstractEventLoop, *args: Any, **kwargs: Any,
+) -> tuple[asyncio.Transport, ResponseHandler]:
+    if aiofastnet is not None:
+        return await aiofastnet.create_connection(loop, *args, **kwargs)
+    else:
+        return await loop.create_connection(*args, **kwargs)
+
+
+async def start_tls(
+    loop: asyncio.AbstractEventLoop, *args: Any, **kwargs: Any
+) -> asyncio.BaseTransport | None:
+    if aiofastnet is not None:
+        return await aiofastnet.start_tls(loop, *args, **kwargs)
+    else:
+        return await loop.start_tls(*args, **kwargs)
+
+
 class Connection:
     """Represents a single connection."""
 
@@ -1259,7 +1284,7 @@ class TCPConnector(BaseConnector):
                     and sys.version_info >= (3, 11)
                 ):
                     kwargs["ssl_shutdown_timeout"] = self._ssl_shutdown_timeout
-                return await self._loop.create_connection(*args, **kwargs, sock=sock)
+                return await create_connection(self._loop, *args, **kwargs, sock=sock)
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
         except ssl_errors as exc:
@@ -1340,7 +1365,8 @@ class TCPConnector(BaseConnector):
                 try:
                     # ssl_shutdown_timeout is only available in Python 3.11+
                     if sys.version_info >= (3, 11) and self._ssl_shutdown_timeout:
-                        tls_transport = await self._loop.start_tls(
+                        tls_transport = await start_tls(
+                            self._loop,
                             underlying_transport,
                             tls_proto,
                             sslcontext,
@@ -1349,7 +1375,8 @@ class TCPConnector(BaseConnector):
                             ssl_shutdown_timeout=self._ssl_shutdown_timeout,
                         )
                     else:
-                        tls_transport = await self._loop.start_tls(
+                        tls_transport = await start_tls(
+                            self._loop,
                             underlying_transport,
                             tls_proto,
                             sslcontext,

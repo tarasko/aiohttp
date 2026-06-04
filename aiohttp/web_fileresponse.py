@@ -34,6 +34,22 @@ if TYPE_CHECKING:
 _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
 
 
+aiofastnet: Any | None
+try:
+    import aiofastnet
+except ImportError:
+    aiofastnet = None
+
+
+async def sendfile(
+    loop: asyncio.AbstractEventLoop, *args: Any, **kwargs: Any
+) -> int:
+    if aiofastnet is not None:
+        return await aiofastnet.sendfile(loop, *args, **kwargs)
+    else:
+        return await loop.sendfile(*args, **kwargs)
+
+
 NOSENDFILE: Final[bool] = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
 
 CONTENT_TYPES: Final[MimeTypes] = MimeTypes()
@@ -132,7 +148,7 @@ class FileResponse(StreamResponse):
             raise ConnectionResetError("Connection lost")
 
         try:
-            await loop.sendfile(transport, fobj, offset, count)
+            await sendfile(loop, transport, fobj, offset, count)
         except NotImplementedError:
             return await self._sendfile_fallback(writer, fobj, offset, count)
 

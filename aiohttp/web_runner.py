@@ -21,6 +21,23 @@ try:
 except ImportError:  # pragma: no cover
     SSLContext = object  # type: ignore[misc,assignment]
 
+
+aiofastnet: Any | None
+try:
+    import aiofastnet
+except ImportError:
+    aiofastnet = None
+
+
+async def create_server(
+    loop: asyncio.AbstractEventLoop, *args: Any, **kwargs: Any
+) -> asyncio.Server:
+    if aiofastnet is not None:
+        return await aiofastnet.create_server(loop, *args, **kwargs)
+    else:
+        return await loop.create_server(*args, **kwargs)
+
+
 __all__ = (
     "BaseSite",
     "TCPSite",
@@ -130,7 +147,8 @@ class TCPSite(BaseSite):
         loop = asyncio.get_running_loop()
         server = self._runner.server
         assert server is not None
-        self._server = await loop.create_server(
+        self._server = await create_server(
+            loop,
             server,
             self._host,
             self._port,
@@ -244,8 +262,8 @@ class SockSite(BaseSite):
         loop = asyncio.get_running_loop()
         server = self._runner.server
         assert server is not None
-        self._server = await loop.create_server(
-            server, sock=self._sock, ssl=self._ssl_context, backlog=self._backlog
+        self._server = await create_server(
+            loop, server, sock=self._sock, ssl=self._ssl_context, backlog=self._backlog
         )
 
 
