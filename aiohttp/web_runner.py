@@ -6,6 +6,11 @@ from typing import Any, Generic, TypeVar
 
 from yarl import URL
 
+try:
+    import aiofastnet
+except ImportError:
+    aiofastnet = None
+
 from .abc import AbstractAccessLogger, AbstractStreamWriter
 from .http_parser import RawRequestMessage
 from .streams import StreamReader
@@ -20,12 +25,6 @@ try:
     from ssl import SSLContext
 except ImportError:  # pragma: no cover
     SSLContext = object  # type: ignore[misc,assignment]
-
-
-try:
-    import aiofastnet
-except ImportError:
-    aiofastnet = None
 
 
 async def create_server(

@@ -11,6 +11,12 @@ from stat import S_ISREG
 from types import MappingProxyType
 from typing import IO, TYPE_CHECKING, Any, Final, Optional
 
+try:
+    import aiofastnet
+except ImportError:
+    aiofastnet = None
+
+
 from . import hdrs
 from .abc import AbstractStreamWriter
 from .helpers import DEFAULT_CHUNK_SIZE, ETAG_ANY, ETag, must_be_empty_body
@@ -32,12 +38,6 @@ if TYPE_CHECKING:
 
 
 _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
-
-
-try:
-    import aiofastnet
-except ImportError:
-    aiofastnet = None
 
 
 async def sendfile(

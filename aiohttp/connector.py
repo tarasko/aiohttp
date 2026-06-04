@@ -18,6 +18,12 @@ import aiohappyeyeballs
 from aiohappyeyeballs import AddrInfoType, SocketFactoryType
 from multidict import CIMultiDict
 
+try:
+    import aiofastnet
+except ImportError:
+    aiofastnet = None
+
+
 from . import hdrs, helpers
 from .abc import AbstractResolver, ResolveResult
 from .client_exceptions import (
@@ -94,12 +100,6 @@ if TYPE_CHECKING:
     from .client import ClientTimeout
     from .client_reqrep import ConnectionKey
     from .tracing import Trace
-
-
-try:
-    import aiofastnet
-except ImportError:
-    aiofastnet = None
 
 
 async def create_connection(
