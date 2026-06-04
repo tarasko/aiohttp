@@ -17,7 +17,7 @@ from pytest_mock import MockerFixture
 from yarl import URL
 
 import aiohttp
-from aiohttp import ClientResponse, connector as connector_module, web
+from aiohttp import ClientResponse, web
 from aiohttp.client import _RequestOptions
 from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.test_utils import TestServer
@@ -131,7 +131,7 @@ async def web_server_endpoint_url(
 
 @pytest.mark.skipif(
     not ASYNCIO_SUPPORTS_TLS_IN_TLS,
-    reason="TLS in TLS is not supported by this transport backend",
+    reason="asyncio on this python does not support TLS in TLS",
 )
 @pytest.mark.parametrize("web_server_endpoint_type", ("http", "https"))
 @pytest.mark.filterwarnings(r"ignore:.*ssl.OP_NO_SSL*")
@@ -163,7 +163,7 @@ async def test_secure_https_proxy_absolute_path(
 
 @pytest.mark.parametrize("web_server_endpoint_type", ("https",))
 @pytest.mark.skipif(
-    ASYNCIO_SUPPORTS_TLS_IN_TLS, reason="TLS in TLS is supported by this transport backend"
+    ASYNCIO_SUPPORTS_TLS_IN_TLS, reason="asyncio on this python supports TLS in TLS"
 )
 @pytest.mark.filterwarnings(r"ignore:.*ssl.OP_NO_SSL*")
 # Filter out the warning from
