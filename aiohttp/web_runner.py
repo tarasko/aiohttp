@@ -30,40 +30,13 @@ except ImportError:
 
 
 async def create_server(
-    loop: asyncio.AbstractEventLoop,
-    protocol_factory: Server[Any],
-    host: str | None = None,
-    port: int | None = None,
-    *,
-    sock: socket.socket | None = None,
-    ssl: SSLContext | None = None,
-    backlog: int = 100,
-    reuse_address: bool | None = None,
-    reuse_port: bool | None = None,
+    loop: asyncio.AbstractEventLoop, *args: Any, **kwargs: Any
 ) -> asyncio.Server:
     if aiofastnet is not None:
-        return await aiofastnet.create_server(  # type: ignore[no-any-return]
-            loop,
-            protocol_factory,
-            host,
-            port,
-            sock=sock,
-            ssl=ssl,
-            backlog=backlog,
-            reuse_address=reuse_address,
-            reuse_port=reuse_port
-        )
+        return await aiofastnet.create_server(loop, *args, **kwargs)
     else:
-        return await loop.create_server(
-            protocol_factory,
-            host,
-            port,
-            sock=sock,
-            ssl=ssl,
-            backlog=backlog,
-            reuse_address=reuse_address,
-            reuse_port=reuse_port,
-        )
+        return await loop.create_server(*args, **kwargs)
+
 
 __all__ = (
     "BaseSite",

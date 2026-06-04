@@ -42,18 +42,12 @@ except ImportError:
 
 
 async def sendfile(
-    loop: asyncio.AbstractEventLoop,
-    transport: asyncio.Transport,
-    fobj: IO[Any],
-    offset: int,
-    count: int,
+    loop: asyncio.AbstractEventLoop, *args: Any, **kwargs: Any
 ) -> int:
     if aiofastnet is not None:
-        return await aiofastnet.sendfile(  # type: ignore[no-any-return]
-            loop, transport, fobj, offset, count
-        )
+        return await aiofastnet.sendfile(loop, *args, **kwargs)
     else:
-        return await loop.sendfile(transport, fobj, offset, count)
+        return await loop.sendfile(*args, **kwargs)
 
 
 NOSENDFILE: Final[bool] = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
