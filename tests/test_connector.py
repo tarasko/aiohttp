@@ -2442,7 +2442,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_zero_not_passed(
         conn = aiohttp.TCPConnector(ssl_shutdown_timeout=0)
 
     with mock.patch.object(
-        conn._loop, "create_connection", autospec=True, spec_set=True
+        connector_module, "create_connection", autospec=True, spec_set=True
     ) as create_connection:
         create_connection.return_value = mock.Mock(), mock.Mock()
 

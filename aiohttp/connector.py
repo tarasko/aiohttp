@@ -104,9 +104,7 @@ except ImportError:
 
 
 async def create_connection(
-    loop: asyncio.AbstractEventLoop,
-    *args: Any,
-    **kwargs: Any,
+    loop: asyncio.AbstractEventLoop, *args: Any, **kwargs: Any,
 ) -> tuple[asyncio.Transport, ResponseHandler]:
     if aiofastnet is not None:
         return await aiofastnet.create_connection(loop, *args, **kwargs)
@@ -115,9 +113,7 @@ async def create_connection(
 
 
 async def start_tls(
-    loop: asyncio.AbstractEventLoop,
-    *args: Any,
-    **kwargs: Any
+    loop: asyncio.AbstractEventLoop, *args: Any, **kwargs: Any
 ) -> asyncio.BaseTransport | None:
     if aiofastnet is not None:
         return await aiofastnet.start_tls(loop, *args, **kwargs)
