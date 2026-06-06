@@ -242,7 +242,6 @@ jobs:
       env:
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
       run: uv pip install -e .
-
     - name: Run unittests
       env:
         COLOR: yes
